@@ -2,8 +2,11 @@ import logging
 import string
 from numpy import exp, dot, zeros, outer, random, dtype, float32 as REAL, empty, ndarray, sum as np_sum
 
+logging.basicConfig(level = logging.INFO)
+logger = logging.getLogger(__name__)
+
 class Word2Vec():
-    def __init__(self, sentences, layer_size = 100, window = 5, min_count = 0, model = 0, optimization = 1, alpha = 0.05, negative = 10, cbow_mean = True):
+    def __init__(self, sentences, layer_size = 100, window = 5, min_count = 5, model = 0, optimization = 1, alpha = 0.05, negative = 10, cbow_mean = True):
         '''
         `sentences` is a list, each element is a list of words
         `layer_size` is the size of hidden layer
@@ -35,12 +38,12 @@ class Word2Vec():
             # CBOW
             for sentence in self.sentences:
                 for pos, word in enumerate(sentence):
-                    if word is None:
+                    if word is None or word not in self.index.keys():
                         continue
                     # Using words in the random window of the given words to predict this word
                     random_window = random.randint(model.window)
                     start = max(0, pos - random_window)
-                    context_indices = [self.index[w] for w in (sentence[start: pos + random_window]) if(w is not None and w != word)]
+                    context_indices = [self.index[w] for w in (sentence[start: pos + random_window]) if(w is not None and w != word and w in self.index.keys())]
                     # Projection
                     l1 = np_sum(self.hidden[context_indices], axis = 0)
                     # Mean
@@ -53,6 +56,7 @@ class Word2Vec():
                         labels = zeros(self.negative + 1)
                         labels[0] = 1.
                         # The indices of words using as targets, including current word and #negative other random words
+                        logger.debug(str(self.index))
                         word_indices = [self.index[word]]
                         while len(word_indices) < self.negative + 1:
                             index_w = random.randint(self.n_word)
@@ -108,7 +112,7 @@ class Monolingual():
     def __iter__(self):
         for line in open(path):
             line_no_punctuation = line.strip('\n').translate(string.maketrans("",""), string.punctuation)
-            sentence = line_no_punctuation.split(' ')
+            sentence = line_no_punctuation.lower().split(' ')
             yield sentence
 
 if __name__ == '__main__':
